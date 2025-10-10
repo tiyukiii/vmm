@@ -58,7 +58,7 @@ export default function App() {
               <button
                 className="btn"
                 onClick={() => {
-                  const next = encodeURIComponent(window.location.pathname + window.location.search)
+                  const next = encodeURIComponent('/');
                   navigate(`/auth?next=${next}`)
                 }}
               >
