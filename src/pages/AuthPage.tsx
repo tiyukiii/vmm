@@ -17,52 +17,33 @@ export default function AuthPage() {
     e.preventDefault();
     setErr(null);
     setLoading(true);
-    
     try {
+      let error: any = null;
+    
       if (mode === 'signin') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        const { error: err1 } = await supabase.auth.signInWithPassword({ email, password });
+        error = err1;
       } else {
-        // Регистрация
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-      
-        // Если сессия не вернулась, пробуем логиниться сразу
-        if (!data.session) {
-          const { error: err2 } = await supabase.auth.signInWithPassword({ email, password });
-          if (err2) throw err2;
-        }
+        const { error: err2 } = await supabase.auth.signUp({ email, password });
+        error = err2;
       }
     
-      // --- НОВАЯ ЧАСТЬ ---
-      // Проверяем, есть ли у пользователя никнейм в таблице profiles
-      const { data: user } = await supabase.auth.getUser();
-      const id = user?.user?.id;
+      if (error) throw error;
     
-      if (id) {
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('id', id)
-          .maybeSingle();
-      
-        if (!prof?.username) {
-          // Если у пользователя ещё нет ника → ведём на onboarding
-          navigate('/onboarding');
-        } else {
-          // Если ник уже есть → на главную или страницу next
-          navigate(next);
-        }
-      } else {
-        navigate(next);
-      }
-      // --- КОНЕЦ НОВОЙ ЧАСТИ ---
+      // читаем next: / по умолчанию
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next') || '/';
+    
+      navigate(next);
     } catch (e: any) {
-      setErr(e.message || 'Ошибка');
+      console.error('Auth error:', e);
+      alert(e?.message || 'Ошибка авторизации'); // теперь покажет, что не так
+      setErr(e?.message || 'Ошибка авторизации');
     } finally {
       setLoading(false);
     }
   };
+
 
 
 
