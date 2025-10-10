@@ -8,13 +8,14 @@ import { useIsAdmin } from '../hooks/useIsAdmin' // 👈 добавь вверх
 
 
 
+
 export default function App() {
+  const navigate = useNavigate()
+  const user = useSession()
+  const isAdmin = useIsAdmin()  
   const [query, setQuery] = React.useState('')
   const [items, setItems] = React.useState<Release[]>([])
   const [loading, setLoading] = React.useState(true)
-  const navigate = useNavigate()
-  const isAdmin = useIsAdmin()
-  const user = useSession()
 
 
   React.useEffect(() => {
@@ -37,13 +38,13 @@ export default function App() {
           <div className="text-2xl font-extrabold">Музыкальные Оценки</div>
           <div className="flex gap-3 items-center">
 
-            {/* Кнопка Админ показывается только если пользователь админ */}
+            {/* Кнопка Админ видна только если пользователь — админ */}
             {isAdmin === true && (
               <button className="btn" onClick={() => navigate('/admin')}>
                 Админ
               </button>
             )}
-
+            
             <button className="btn-primary" onClick={() => navigate('/top100')}>
               Топ 100
             </button>
@@ -58,13 +59,15 @@ export default function App() {
               <button
                 className="btn"
                 onClick={() => {
-                  const next = encodeURIComponent('/');
+                  // для GitHub Pages c HashRouter берём корень приложения
+                  const next = encodeURIComponent('/')
                   navigate(`/auth?next=${next}`)
                 }}
               >
                 Войти
               </button>
             )}
+
           </div>
 
         </div>
