@@ -29,7 +29,7 @@ export default function TrackPage() {
           <button onClick={() => navigate(-1)} className="text-white/60 hover:text-white">← Назад</button>
           <div className="flex items-center gap-3">
             {item?.type && (<span className="px-3 py-1 rounded-xl text-sm bg-white/10 border border-white/10">{item.type}</span>)}
-            {slug && <button onClick={() => navigate(`/track/${slug}/review`)} className="btn-primary">Поставить рецензию</button>}
+            {slug && <button onClick={() => navigate(`/review/${slug}`)} className="btn-primary">Поставить рецензию</button>}
             <button onClick={() => navigate('/')} className="btn">← На главную</button>
           </div>
         </div>
