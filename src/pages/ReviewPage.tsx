@@ -107,7 +107,8 @@ export default function ReviewPage() {
 
           <div className="flex items-center gap-4">
             <span className="w-32">Extra Points</span>
-            <input type="number" min={0} value={vals.extra} onChange={e=>setVals(v=>({...v, extra:Math.max(0, parseInt(e.target.value)||0)}))} className="w-24 bg-white/10 border border-white/10 rounded px-2 py-1"/>
+            <input type="number" min={0} step={2} value={vals.extra} onChange={e=>setVals(v=>({...v, extra:Math.max(0, Number(e.target.value)||0)}))} className="w-24 bg-white/10 border border-white/10 rounded px-2 py-1"/>
+
             <span className="text-white/60">(+2 за каждый)</span>
           </div>
 
