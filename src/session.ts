@@ -1,44 +1,61 @@
-import React from 'react'
-import { supabase } from './supabase'
+// src/session.ts
+import React, {
+  createContext, useContext, useEffect, useState, type ReactNode,
+} from 'react';
+import type { Session, User } from '@supabase/supabase-js';
+import { supabase } from './supabase';
 
-export type Sess = {
-  email: string | null
-}
+type SessionContextValue = {
+  user: User | null;
+  session: Session | null;
+  loading: boolean;
+  signOut: () => Promise<void>;
+};
 
-export function useSession() {
-  const [user, setUser] = React.useState<Sess>({ email: null })
+const SessionCtx = createContext<SessionContextValue>({
+  user: null,
+  session: null,
+  loading: true,
+  signOut: async () => {},
+});
 
-  React.useEffect(() => {
-    let mounted = true
-    supabase.auth.getUser().then(({ data }) => {
-      if (!mounted) return
-      setUser({ email: data.user?.email ?? null })
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange(async () => {
-      const { data } = await supabase.auth.getUser()
-      if (!mounted) return
-      setUser({ email: data.user?.email ?? null })
-    })
+export function SessionProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // 1) первая загрузка — читаем сохранённую сессию
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session ?? null);
+      setUser(data.session?.user ?? null);
+      setLoading(false);
+    });
+
+    // 2) подписка на изменения
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      setLoading(false);
+    });
+
     return () => {
-      mounted = false
-      sub?.subscription.unsubscribe()
-    }
-  }, [])
+      sub?.subscription?.unsubscribe();
+    };
+  }, []);
 
-  return user
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  return (
+    <SessionCtx.Provider value={{ user, session, loading, signOut: handleSignOut }}>
+      {children}
+    </SessionCtx.Provider>
+  );
 }
 
-export async function getUserEmail(): Promise<string | null> {
-  const { data } = await supabase.auth.getUser()
-  return data.user?.email ?? null
-}
-
-export async function signOut() {
-  await supabase.auth.signOut()
-}
-
-export async function getUserId(): Promise<string | null> {
-  const { data } = await supabase.auth.getUser();
-  return data.user?.id ?? null;
-}
-
+// Хуки
+export const useSession = () => useContext(SessionCtx);
+export const useUser = () => useContext(SessionCtx).user;
+export const signOut = async () => supabase.auth.signOut();
