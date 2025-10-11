@@ -2,6 +2,7 @@ import React from 'react';
 import { supabase } from '../supabase';
 import { getUserId } from '../session';
 
+
 // Возвращает: true — админ, false — не админ, 'loading' — проверяем
 export function useIsAdmin(): true | false | 'loading' {
   const [isAdmin, setIsAdmin] = React.useState<true | false | 'loading'>('loading');

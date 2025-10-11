@@ -11,7 +11,7 @@ import { useIsAdmin } from '../hooks/useIsAdmin' // 👈 добавь вверх
 
 export default function App() {
   const navigate = useNavigate()
-  const user = useSession()
+  const { user } = useSession()
   const isAdmin = useIsAdmin()  
   const [query, setQuery] = React.useState('')
   const [items, setItems] = React.useState<Release[]>([])
@@ -52,7 +52,7 @@ export default function App() {
             {/* Войти/Выйти */}
             {user?.email ? (
               <div className="flex items-center gap-2">
-                <span className="text-white/60 text-sm">{user.email}</span>
+                <span className="text-white/60 text-sm">{user?.email}</span>
                 <button className="btn" onClick={signOut}>Выйти</button>
               </div>
             ) : (
