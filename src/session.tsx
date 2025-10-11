@@ -64,3 +64,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 export const useSession = () => useContext(SessionCtx);
 export const useUser = () => useContext(SessionCtx).user;
 export const signOut = async () => supabase.auth.signOut();
+
+export const getUserId = () => {
+  const { user } = useContext(SessionCtx);
+  return user?.id ?? null;
+};
+
+export const getUserEmail = () => {
+  const { user } = useContext(SessionCtx);
+  return user?.email ?? null;
+};
