@@ -1,14 +1,16 @@
 import React from 'react'
 import { supabase } from '../supabase'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getUserEmail } from '../session';
-import { getUserId } from '../session';
+import { useSession } from '../session';
+
+
 
 
 
 export default function ReviewPage() {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const { user } = useSession();
   const [vals, setVals] = React.useState({ text:0, vibe:0, charisma:0, integrity:0, boom:0, extra:0 })
   const clamp16 = (n:number)=> Math.max(0, Math.min(16, n|0))
   const base = vals.text + vals.vibe + vals.charisma + vals.integrity + vals.boom
@@ -29,7 +31,7 @@ export default function ReviewPage() {
       if (findErr || !rel) throw findErr || new Error('Релиз не найден');
     
       // 3) проверяем, что юзер залогинен
-      const uid = await getUserId();
+      const uid = user?.id ?? null;
       if (!uid) {
         alert('Нужно войти, чтобы поставить оценку');
         const next = encodeURIComponent(window.location.pathname + window.location.search);
@@ -38,12 +40,16 @@ export default function ReviewPage() {
       }
     
       // 4) вставляем отзыв (user_id — обязательный)
-      const { error: insertErr } = await supabase.from('reviews').insert({
-        release_id: rel.id,
-        user_id: uid,   // <-- важно: сохраняем uid
-        scores: vals,
-        total,
-      });
+      const { error: insertErr } = await supabase
+      .from('reviews')
+      .insert([
+        {
+          release_id: rel.id,
+          user_id: uid, // <-- важно: сохраняем uid
+          scores: vals,
+          total: total88,
+        },
+      ]);
     
       // "мягкая" обработка уникальности — второй голос
       if (insertErr) {
