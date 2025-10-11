@@ -1,6 +1,10 @@
 // src/session.ts
 import React, {
-  createContext, useContext, useEffect, useState, type ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
@@ -32,15 +36,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    // 2) подписка на изменения
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    // 2) подписка на изменения сессии
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
       setLoading(false);
     });
 
     return () => {
-      sub?.subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -55,7 +61,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Хуки
 export const useSession = () => useContext(SessionCtx);
 export const useUser = () => useContext(SessionCtx).user;
 export const signOut = async () => supabase.auth.signOut();
