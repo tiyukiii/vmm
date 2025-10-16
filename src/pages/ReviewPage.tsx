@@ -2,6 +2,7 @@ import React from 'react'
 import { supabase } from '../supabase'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useSession } from '../session';
+import { useIsAdmin } from '../hooks/useIsAdmin';
 
 
 
@@ -15,6 +16,8 @@ export default function ReviewPage() {
   const clamp16 = (n:number)=> Math.max(0, Math.min(16, n|0))
   const base = vals.text + vals.vibe + vals.charisma + vals.integrity + vals.boom
   const total88 = Math.min(88, base + vals.extra * 2);
+  const isAdmin = useIsAdmin(); // true | false | 'loading'
+
 
   const save = async () => {
     try {
@@ -48,6 +51,7 @@ export default function ReviewPage() {
           user_id: uid, // <-- важно: сохраняем uid
           scores: vals,
           total: total88,
+          is_admin: isAdmin === true,
         },
       ]);
     
