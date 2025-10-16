@@ -58,10 +58,22 @@ export default function Top100Page() {
             </div>
             <div className="flex items-center gap-3">
               <div>
-                <span className="px-3 py-1 rounded-xl bg-white/10 border border-white/10 text-sm">
-                  {(r.score ?? 0).toFixed(1)} / 88
-                </span>
-                <div className="text-xs text-white/60">Голосов: {r.votes ?? 0}</div>
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1 rounded-xl bg-white/10 border border-white/10">
+                    <span className="text-white/60 mr-1">Офиц.:</span>
+                    {(r.admin_total ?? 0).toFixed(1)} / 88
+                  </span>
+                        
+                  <span className="px-3 py-1 rounded-xl bg-white/10 border border-white/10">
+                    <span className="text-white/60 mr-1">Польз.:</span>
+                    {(r.score ?? 0).toFixed(1)} / 88
+                  </span>
+                        
+                  <div className="text-xs text-white/60">
+                    Голосов: {r.votes ?? 0}
+                  </div>
+                </div>
+
               </div>
               <button
                 onClick={() => navigate(`/track/${r.slug}`)}

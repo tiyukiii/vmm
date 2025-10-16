@@ -15,7 +15,8 @@ export type Release = {
 
 // Получить список всех релизов
 export async function fetchReleases(): Promise<Release[]> {
-  const { data, error } = await supabase
+  // 1) забираем список релизов
+  const { data: rows, error } = await supabase
     .from('releases')
     .select('id, slug, artist, title, type, cover_url, created_at');
 
@@ -24,13 +25,68 @@ export async function fetchReleases(): Promise<Release[]> {
     return [];
   }
 
-  return (data ?? []).map(r => ({
-    ...r,
-    score: null,       // по списку мы не знаем средние — ставим дефолт
-    votes: 0,          // дефолт
-    admin_total: null, // дефолт
-  })) as Release[];
+  const ids = rows.map(r => r.id);
+  if (ids.length === 0) return [];
+
+  // 2) забираем отзывы админов и пользователей (в пределах этих релизов)
+  const { data: adminRv, error: adminErr } = await supabase
+    .from('reviews')
+    .select('release_id, total, is_admin')
+    .in('release_id', ids)
+    .eq('is_admin', true);
+
+  const { data: userRv, error: userErr } = await supabase
+    .from('reviews')
+    .select('release_id, total, is_admin')
+    .in('release_id', ids)
+    .eq('is_admin', false);
+
+  if (adminErr) console.error('fetchReleases admin reviews error', adminErr);
+  if (userErr) console.error('fetchReleases user reviews error', userErr);
+
+  // утилита среднего (округление до 0.1)
+  const avg = (arr: number[]) =>
+    arr.length ? Math.round((arr.reduce((s, n) => s + n, 0) / arr.length) * 10) / 10 : null;
+
+  // 3) собираем по release_id
+  const adminMap = new Map<number, number[]>(); // release_id -> totals[]
+  const userMap = new Map<number, number[]>();  // release_id -> totals[]
+
+  (adminRv ?? []).forEach(r => {
+    const list = adminMap.get(r.release_id) ?? [];
+    if (Number.isFinite(r.total)) list.push(Number(r.total));
+    adminMap.set(r.release_id, list);
+  });
+
+  (userRv ?? []).forEach(r => {
+    const list = userMap.get(r.release_id) ?? [];
+    if (Number.isFinite(r.total)) list.push(Number(r.total));
+    userMap.set(r.release_id, list);
+  });
+
+  // 4) собираем итоговую структуру Release
+  const result: Release[] = rows.map(r => {
+    const uTotals = userMap.get(r.id) ?? [];
+    const aTotals = adminMap.get(r.id) ?? [];
+
+    return {
+      id: r.id,
+      slug: r.slug,
+      artist: r.artist,
+      title: r.title,
+      type: r.type,
+      cover_url: r.cover_url,
+      created_at: r.created_at,
+
+      score: avg(uTotals),             // средняя пользовательская
+      votes: uTotals.length,           // кол-во пользовательских голосов
+      admin_total: avg(aTotals),       // средняя админская
+    } as Release;
+  });
+
+  return result;
 }
+
 
 // Получить релиз по slug (с агрегацией)
 export async function fetchReleaseBySlug(slug: string): Promise<Release | null> {
