@@ -21,11 +21,10 @@ export default function TrackGridPage() {
 
   const [loading, setLoading] = React.useState(true)
 
-  // Многораундовая верхняя сетка
+  // Многораундовая верхняя и нижняя сетка
   const [upperRounds, setUpperRounds] = React.useState<Round[]>([])
+  const [lowerRounds, setLowerRounds] = React.useState<Round[]>([])
 
-  // Нижняя сетка (пока только проигравшие 1-го раунда)
-  const [lowerRound1, setLowerRound1] = React.useState<Match[]>([])
   const [selected, setSelected] = React.useState<Release | null>(null)
 
   // =================== Построение верхнего брэкета ===================
@@ -90,47 +89,47 @@ export default function TrackGridPage() {
 
         const bracket = buildUpperBracket(top32)
         setUpperRounds(bracket)
+
+        // 5) создаём пустые раунды нижней сетки (по количеству раундов верхней + финал)
+        const lower: Round[] = []
+        for (let i = 0; i < bracket.length; i++) {
+          lower.push([])
+        }
+        setLowerRounds(lower)
       } finally {
         setLoading(false)
       }
     })()
   }, [])
 
-  // =================== Победители/проигравшие 1-го раунда ===================
+  // =================== Помощник: положить игрока в нужный раунд нижней ===================
 
-  const firstRound = upperRounds[0] ?? []
+  const placeInLower = React.useCallback((roundIndex: number, player: Release) => {
+    setLowerRounds(prev => {
+      const rounds = prev.map(round => round.map(m => ({ ...m })))
 
-  const upperRound1Losers = React.useMemo(() => {
-    const losers: Release[] = []
-    firstRound.forEach(m => {
-      if (m.winnerSide === 'left' && m.right) losers.push(m.right)
-      if (m.winnerSide === 'right' && m.left) losers.push(m.left)
+      if (!rounds[roundIndex]) {
+        rounds[roundIndex] = []
+      }
+
+      const round = rounds[roundIndex]
+
+      // ищем матч, где есть свободное место
+      let match = round.find(m => !m.left || !m.right)
+      if (!match) {
+        match = { id: round.length }
+        round.push(match)
+      }
+
+      if (!match.left) {
+        match.left = player
+      } else if (!match.right) {
+        match.right = player
+      }
+
+      return rounds
     })
-    return losers
-  }, [firstRound])
-
-  // Нижняя сетка — проигравшие Раунда 1
-  React.useEffect(() => {
-    const matches: Match[] = []
-    for (let i = 0; i < upperRound1Losers.length; i += 2) {
-      matches.push({
-        id: i / 2,
-        left: upperRound1Losers[i],
-        right: upperRound1Losers[i + 1],
-        winnerSide: upperRound1Losers[i + 1] ? undefined : 'left',
-      })
-    }
-    setLowerRound1(matches)
-  }, [upperRound1Losers])
-
-  const lowerWinners = React.useMemo(() => {
-    const winners: Release[] = []
-    lowerRound1.forEach(m => {
-      if (m.winnerSide === 'left' && m.left) winners.push(m.left)
-      if (m.winnerSide === 'right' && m.right) winners.push(m.right)
-    })
-    return winners
-  }, [lowerRound1])
+  }, [])
 
   // =================== Логика кликов в верхней сетке ===================
 
@@ -143,8 +142,8 @@ export default function TrackGridPage() {
     if (!isAdmin || !rel) return
 
     setUpperRounds(prev => {
-      const copy = prev.map(round => round.map(m => ({ ...m })))
-      const round = copy[roundIndex]
+      const rounds = prev.map(round => round.map(m => ({ ...m })))
+      const round = rounds[roundIndex]
       if (!round) return prev
 
       const match = round[matchIndex]
@@ -152,15 +151,13 @@ export default function TrackGridPage() {
 
       match.winnerSide = side
 
-      const winner =
-        side === 'left' ? match.left : match.right
-      const loser =
-        side === 'left' ? match.right : match.left
+      const winner = side === 'left' ? match.left : match.right
+      const loser = side === 'left' ? match.right : match.left
 
       // продвигаем победителя в следующий раунд
       const nextRoundIndex = roundIndex + 1
-      if (winner && nextRoundIndex < copy.length) {
-        const nextRound = copy[nextRoundIndex]
+      if (winner && nextRoundIndex < rounds.length) {
+        const nextRound = rounds[nextRoundIndex]
         const targetMatchIndex = Math.floor(matchIndex / 2)
         const targetMatch = nextRound[targetMatchIndex]
         if (targetMatch) {
@@ -174,9 +171,12 @@ export default function TrackGridPage() {
         }
       }
 
-      // (позже сюда можно будет подвесить отправку loser'а в нужный раунд нижней сетки)
+      // отправляем проигравшего в нижнюю сетку (в раунд с тем же индексом)
+      if (loser) {
+        placeInLower(roundIndex, loser)
+      }
 
-      return copy
+      return rounds
     })
 
     setSelected(rel)
@@ -185,16 +185,53 @@ export default function TrackGridPage() {
   // =================== Логика кликов в нижней сетке ===================
 
   function handlePickLower(
+    roundIndex: number,
     matchIndex: number,
     side: 'left' | 'right',
     rel?: Release,
   ) {
     if (!isAdmin || !rel) return
-    setLowerRound1(prev =>
-      prev.map((m, idx) =>
-        idx === matchIndex ? { ...m, winnerSide: side } : m,
-      ),
-    )
+
+    setLowerRounds(prev => {
+      const rounds = prev.map(round => round.map(m => ({ ...m })))
+      const round = rounds[roundIndex]
+      if (!round) return prev
+
+      const match = round[matchIndex]
+      if (!match) return prev
+
+      match.winnerSide = side
+
+      const winner = side === 'left' ? match.left : match.right
+
+      // победитель идёт в следующий раунд нижней
+      const nextRoundIndex = roundIndex + 1
+      if (winner && nextRoundIndex < rounds.length) {
+        if (!rounds[nextRoundIndex]) {
+          rounds[nextRoundIndex] = []
+        }
+        const nextRound = rounds[nextRoundIndex]
+
+        const targetMatchIndex = Math.floor(matchIndex / 2)
+        let targetMatch = nextRound[targetMatchIndex]
+        if (!targetMatch) {
+          targetMatch = { id: targetMatchIndex }
+          nextRound[targetMatchIndex] = targetMatch
+        }
+
+        const targetSide: 'left' | 'right' =
+          matchIndex % 2 === 0 ? 'left' : 'right'
+
+        if (targetSide === 'left') {
+          targetMatch.left = winner
+        } else {
+          targetMatch.right = winner
+        }
+      }
+
+      return rounds
+    })
+
     setSelected(rel)
   }
 
@@ -275,6 +312,10 @@ export default function TrackGridPage() {
     return `Раунд ${index + 1}`
   }
 
+  function getLowerRoundTitle(index: number): string {
+    return `Нижняя R${index + 1}`
+  }
+
   // =================== Рендер ===================
 
   return (
@@ -313,8 +354,8 @@ export default function TrackGridPage() {
           </div>
           <div className="text-sm text-white/70">
             В сетку попадает топ-32 треков (по admin_total). Победители
-            продвигаются по раундам верхней сетки, пока не останется один
-            финалист. Проигравшие первого раунда попадают в нижнюю сетку.
+            продвигаются по раундам верхней сетки, проигравшие разных раундов
+            попадают в нижнюю сетку и там продолжают борьбу.
           </div>
           {!isAdmin && (
             <div className="text-xs text-white/50">
@@ -325,7 +366,7 @@ export default function TrackGridPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[2fr,1fr] gap-6 items-start">
-          {/* Левая часть: полная верхняя + нижняя */}
+          {/* Левая часть: верхняя + нижняя */}
           <div className="space-y-8">
             {/* ВЕРХНЯЯ СЕТКА */}
             <div className="space-y-3">
@@ -370,77 +411,45 @@ export default function TrackGridPage() {
               )}
             </div>
 
-            {/* НИЖНЯЯ СЕТКА (пока только Раунд 1 + победители) */}
-            {!loading && (
+            {/* НИЖНЯЯ СЕТКА */}
+            {!loading && lowerRounds.length > 0 && (
               <div className="space-y-3">
-                <div className="text-sm text-white/60 font-semibold flex items-center gap-3">
-                  <span>Нижняя сетка</span>
-                  <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
-                    Проигравшие Раунда 1
-                  </span>
+                <div className="text-sm text-white/60 font-semibold">
+                  Нижняя сетка
                 </div>
 
-                {lowerRound1.length === 0 && (
-                  <div className="text-sm text-white/40">
-                    Нижняя сетка заполнится, когда в первом раунде верхней
-                    сетки будут выбраны победители.
-                  </div>
-                )}
+                <div className="overflow-x-auto pb-2">
+                  <div className="flex gap-6 min-w-max">
+                    {lowerRounds.map((round, roundIndex) => (
+                      <div
+                        key={roundIndex}
+                        className="flex flex-col items-stretch gap-3"
+                      >
+                        <div className="text-xs text-white/60 px-2">
+                          {getLowerRoundTitle(roundIndex)}
+                        </div>
 
-                {lowerRound1.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-1">
-                    <div className="space-y-3">
-                      {lowerRound1.map((match, idx) =>
-                        renderMatchCard(
-                          match,
-                          0,
-                          idx,
-                          false,
-                          (rIdx, mIdx, side, rel) =>
-                            handlePickLower(mIdx, side, rel),
-                        ),
-                      )}
-                    </div>
+                        <div className="flex flex-col gap-3">
+                          {round.length === 0 && (
+                            <div className="text-xs text-white/40 px-2">
+                              Ожидаются участники
+                            </div>
+                          )}
 
-                    <div className="space-y-3">
-                      <div className="text-sm text-white/60 mb-1">
-                        Раунд 2 (нижняя)
+                          {round.map((match, matchIndex) =>
+                            renderMatchCard(
+                              match,
+                              roundIndex,
+                              matchIndex,
+                              false,
+                              handlePickLower,
+                            ),
+                          )}
+                        </div>
                       </div>
-                      {lowerWinners.length === 0 && (
-                        <div className="text-sm text-white/40">
-                          В нижней сетке ещё нет победителей. Кликни по
-                          трекам (как админ), чтобы продвинуть их дальше.
-                        </div>
-                      )}
-                      {lowerWinners.map((rel, idx) => (
-                        <div
-                          key={rel.id ?? idx}
-                          onMouseEnter={() => setSelected(rel)}
-                          className="card px-3 py-2 flex items-center gap-3 bg-white/10 border border-sky-400/70 rounded-xl text-sm"
-                        >
-                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/10 shrink-0">
-                            <img
-                              src={rel.cover_url || FALLBACK_COVER}
-                              alt={rel.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-semibold truncate">
-                              {rel.artist}
-                            </div>
-                            <div className="text-[11px] text-white/70 truncate">
-                              {rel.title}
-                            </div>
-                          </div>
-                          <div className="text-[9px] text-sky-300 uppercase tracking-wide">
-                            нижняя сетка
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    ))}
                   </div>
-                )}
+                </div>
               </div>
             )}
           </div>
