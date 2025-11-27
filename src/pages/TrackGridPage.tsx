@@ -21,7 +21,6 @@ export default function TrackGridPage() {
 
   const [loading, setLoading] = React.useState(true)
 
-  // Верхняя и нижняя сетки (первый раунд)
   const [upperRound1, setUpperRound1] = React.useState<Match[]>([])
   const [lowerRound1, setLowerRound1] = React.useState<Match[]>([])
 
@@ -33,16 +32,23 @@ export default function TrackGridPage() {
       try {
         const rows = await fetchReleases()
 
-        // Берём только треки (чтобы не залетали альбомы и др. типы)
-        const onlyTracks = rows.filter(r => r.type === 'трек')
+        // 1) Пытаемся взять только треки (без учёта регистра)
+        const onlyTracks = rows.filter(r => {
+          const t = (r as any).type
+          if (!t) return false
+          return String(t).toLowerCase() === 'трек'
+        })
 
-        // Сортируем по admin_total по убыванию — как на топ-100
-        const sorted = [...onlyTracks].sort(
+        // 2) Если после фильтрации пусто — используем все релизы, чтобы сетка не была пустой
+        const source = onlyTracks.length > 0 ? onlyTracks : rows
+
+        // 3) Сортируем по admin_total по убыванию
+        const sorted = [...source].sort(
           (a, b) =>
             ((b as any).admin_total ?? 0) - ((a as any).admin_total ?? 0),
         )
 
-        // Берём только топ-32 трека
+        // 4) Берём только топ-32
         const top32 = sorted.slice(0, 32)
 
         const matches: Match[] = []
@@ -54,8 +60,7 @@ export default function TrackGridPage() {
             id: i / 2,
             left,
             right,
-            // если нет соперника справа — авто-проход
-            winner: right ? undefined : 'left',
+            winner: right ? undefined : 'left', // если нет соперника — авто-проход
           })
         }
 
@@ -98,7 +103,6 @@ export default function TrackGridPage() {
         id: i / 2,
         left,
         right,
-        // если нет соперника — авто-проход
         winner: right ? undefined : 'left',
       })
     }
@@ -114,15 +118,13 @@ export default function TrackGridPage() {
     return list
   }, [lowerRound1])
 
-  // ========= Обработчики кликов (верх / низ) =========
+  // ========= Обработчики кликов =========
 
   const handlePickUpper = (matchIndex: number, side: 'left' | 'right', rel?: Release) => {
     if (!isAdmin || !rel) return
     setUpperRound1(prev =>
       prev.map((m, idx) =>
-        idx === matchIndex
-          ? { ...m, winner: side }
-          : m,
+        idx === matchIndex ? { ...m, winner: side } : m,
       ),
     )
     setSelected(rel)
@@ -132,15 +134,13 @@ export default function TrackGridPage() {
     if (!isAdmin || !rel) return
     setLowerRound1(prev =>
       prev.map((m, idx) =>
-        idx === matchIndex
-          ? { ...m, winner: side }
-          : m,
+        idx === matchIndex ? { ...m, winner: side } : m,
       ),
     )
     setSelected(rel)
   }
 
-  // ========= Рендер карточек матча (общий) =========
+  // ========= Рендер карточек матча =========
 
   const renderMatchCard = (
     match: Match,
