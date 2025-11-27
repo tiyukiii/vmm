@@ -165,69 +165,82 @@ export async function fetchReleaseBySlug(slug: string): Promise<Release | null> 
   const admin_total = avg(adminTotals);   // средняя админская
   const votes = userTotals.length;        // количество пользовательских голосов
 
-  // /// Разбивка по критериям для пользователей
+  /// /// Разбивка по критериям для пользователей
   const user_breakdown: Scores | null = user.length
     ? {
         // r1: Текст
         r1: avg(
           user
-            .map(r => Number(r.scores?.text))
-            .filter(n => Number.isFinite(n)),
+            .map((r) => Number(r.scores?.text))
+            .filter((n) => Number.isFinite(n)),
         ),
+
         // r2: Атмосфера
         r2: avg(
           user
-            .map(r => Number(r.scores?.vibe))
-            .filter(n => Number.isFinite(n)),
+            .map((r) => Number(r.scores?.vibe))
+            .filter((n) => Number.isFinite(n)),
         ),
-        // r3: Разъеб
+
+        // r3: Разъёб
         r3: avg(
           user
-            .map(r => Number(r.scores?.boom))
-            .filter(n => Number.isFinite(n)),
+            .map((r) => Number(r.scores?.boom))
+            .filter((n) => Number.isFinite(n)),
         ),
+
         // r4: Харизма
         r4: avg(
           user
-            .map(r => Number(r.scores?.char))
-            .filter(n => Number.isFinite(n)),
+            .map((r) => Number(r.scores?.char))
+            .filter((n) => Number.isFinite(n)),
         ),
-        // r5: Целостность (extra)
+
+        // r5: Целостность
         r5: avg(
           user
-            .map(r => Number(r.scores?.extra))
-            .filter(n => Number.isFinite(n)),
+            .map((r) => Number(r.scores?.extra))
+            .filter((n) => Number.isFinite(n)),
         ),
       }
     : null;
 
-  // /// Разбивка по критериям для админов
+  /// /// Разбивка по критериям для админов
   const admin_breakdown: Scores | null = admins.length
     ? {
+        // r1: Текст
         r1: avg(
           admins
-            .map(r => Number(r.scores?.text))
-            .filter(n => Number.isFinite(n)),
+            .map((r) => Number(r.scores?.text))
+            .filter((n) => Number.isFinite(n)),
         ),
+
+        // r2: Атмосфера
         r2: avg(
           admins
-            .map(r => Number(r.scores?.vibe))
-            .filter(n => Number.isFinite(n)),
+            .map((r) => Number(r.scores?.vibe))
+            .filter((n) => Number.isFinite(n)),
         ),
+
+        // r3: Разъёб
         r3: avg(
           admins
-            .map(r => Number(r.scores?.boom))
-            .filter(n => Number.isFinite(n)),
+            .map((r) => Number(r.scores?.boom))
+            .filter((n) => Number.isFinite(n)),
         ),
+
+        // r4: Харизма
         r4: avg(
           admins
-            .map(r => Number(r.scores?.char))
-            .filter(n => Number.isFinite(n)),
+            .map((r) => Number(r.scores?.char))
+            .filter((n) => Number.isFinite(n)),
         ),
+
+        // r5: Целостность
         r5: avg(
           admins
-            .map(r => Number(r.scores?.extra))
-            .filter(n => Number.isFinite(n)),
+            .map((r) => Number(r.scores?.extra))
+            .filter((n) => Number.isFinite(n)),
         ),
       }
     : null;
