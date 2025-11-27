@@ -14,6 +14,16 @@ type Match = {
 
 type Round = Match[]
 
+function getWinner(match?: Match): Release | undefined {
+  if (!match || !match.winnerSide) return undefined
+  return match.winnerSide === 'left' ? match.left : match.right
+}
+
+function getLoser(match?: Match): Release | undefined {
+  if (!match || !match.winnerSide || !match.left || !match.right) return undefined
+  return match.winnerSide === 'left' ? match.right : match.left
+}
+
 export default function TrackGridPage() {
   const navigate = useNavigate()
   const { user } = useSession()
@@ -21,9 +31,12 @@ export default function TrackGridPage() {
 
   const [loading, setLoading] = React.useState(true)
 
-  // Многораундовая верхняя и нижняя сетка
+  // Многораундовая верхняя и нижняя сетки
   const [upperRounds, setUpperRounds] = React.useState<Round[]>([])
   const [lowerRounds, setLowerRounds] = React.useState<Round[]>([])
+
+  // Гранд-финал: победитель верхней vs победитель нижней
+  const [grandFinal, setGrandFinal] = React.useState<Match | null>(null)
 
   const [selected, setSelected] = React.useState<Release | null>(null)
 
@@ -36,8 +49,7 @@ export default function TrackGridPage() {
         id: i / 2,
         left: players[i],
         right: players[i + 1],
-        // если нет соперника — авто-проход
-        winnerSide: players[i + 1] ? undefined : 'left',
+        winnerSide: players[i + 1] ? undefined : 'left', // авто-проход, если нет соперника
       })
     }
     return matches
@@ -90,7 +102,7 @@ export default function TrackGridPage() {
         const bracket = buildUpperBracket(top32)
         setUpperRounds(bracket)
 
-        // 5) создаём пустые раунды нижней сетки (по количеству раундов верхней + финал)
+        // 5) создаём пустые раунды нижней сетки (по количеству раундов верхней)
         const lower: Round[] = []
         for (let i = 0; i < bracket.length; i++) {
           lower.push([])
@@ -102,7 +114,7 @@ export default function TrackGridPage() {
     })()
   }, [])
 
-  // =================== Помощник: положить игрока в нужный раунд нижней ===================
+  // =================== Помощник: отправить игрока в нужный раунд нижней ===================
 
   const placeInLower = React.useCallback((roundIndex: number, player: Release) => {
     setLowerRounds(prev => {
@@ -154,7 +166,7 @@ export default function TrackGridPage() {
       const winner = side === 'left' ? match.left : match.right
       const loser = side === 'left' ? match.right : match.left
 
-      // продвигаем победителя в следующий раунд
+      // победитель идёт в следующий раунд верхней
       const nextRoundIndex = roundIndex + 1
       if (winner && nextRoundIndex < rounds.length) {
         const nextRound = rounds[nextRoundIndex]
@@ -171,7 +183,7 @@ export default function TrackGridPage() {
         }
       }
 
-      // отправляем проигравшего в нижнюю сетку (в раунд с тем же индексом)
+      // проигравший летит в нижнюю сетку в раунд с тем же индексом
       if (loser) {
         placeInLower(roundIndex, loser)
       }
@@ -234,6 +246,86 @@ export default function TrackGridPage() {
 
     setSelected(rel)
   }
+
+  // =================== Гранд-финал ===================
+
+  const upperFinalMatch = upperRounds.length
+    ? upperRounds[upperRounds.length - 1]?.[0]
+    : undefined
+  const upperWinner = getWinner(upperFinalMatch)
+
+  const nonEmptyLowerRounds = lowerRounds.filter(r =>
+    r.some(m => m.left || m.right),
+  )
+  const lowerFinalRound =
+    nonEmptyLowerRounds.length > 0
+      ? nonEmptyLowerRounds[nonEmptyLowerRounds.length - 1]
+      : undefined
+  const lowerFinalMatch = lowerFinalRound?.[0]
+  const lowerWinner = getWinner(lowerFinalMatch)
+  const lowerLoser = getLoser(lowerFinalMatch)
+
+  React.useEffect(() => {
+    if (upperWinner && lowerWinner) {
+      setGrandFinal(prev => {
+        // если уже есть такой же финал — не пересоздаём
+        if (
+          prev &&
+          prev.left?.id === upperWinner.id &&
+          prev.right?.id === lowerWinner.id
+        ) {
+          return prev
+        }
+        return {
+          id: 0,
+          left: upperWinner,
+          right: lowerWinner,
+          winnerSide: prev?.winnerSide,
+        }
+      })
+    }
+  }, [upperWinner, lowerWinner])
+
+  function handlePickGrand(side: 'left' | 'right', rel?: Release) {
+    if (!isAdmin || !grandFinal || !rel) return
+    setGrandFinal(prev => (prev ? { ...prev, winnerSide: side } : prev))
+    setSelected(rel)
+  }
+
+  // =================== Подсчёт топ-1…5 ===================
+
+  const top1 = grandFinal ? getWinner(grandFinal) : undefined
+  const top2 =
+    grandFinal && grandFinal.left && grandFinal.right && grandFinal.winnerSide
+      ? grandFinal.winnerSide === 'left'
+        ? grandFinal.right
+        : grandFinal.left
+      : undefined
+
+  const top3 = lowerLoser
+
+  // Предпоследний раунд нижней — оттуда берём ещё 2 места
+  const penultimateLowerRound =
+    nonEmptyLowerRounds.length >= 2
+      ? nonEmptyLowerRounds[nonEmptyLowerRounds.length - 2]
+      : undefined
+
+  const penultimateLosers: Release[] = []
+  if (penultimateLowerRound) {
+    penultimateLowerRound.forEach(m => {
+      const w = getWinner(m)
+      const l = getLoser(m)
+      if (w && l) penultimateLosers.push(l)
+    })
+  }
+
+  penultimateLosers.sort(
+    (a, b) =>
+      ((b as any).admin_total ?? 0) - ((a as any).admin_total ?? 0),
+  )
+
+  const top4 = penultimateLosers[0]
+  const top5 = penultimateLosers[1]
 
   // =================== Рендер карточки матча ===================
 
@@ -316,6 +408,49 @@ export default function TrackGridPage() {
     return `Нижняя R${index + 1}`
   }
 
+  function renderPlacementCard(
+    place: number,
+    label: string,
+    rel?: Release,
+    placeholderText?: string,
+  ) {
+    const sizeClasses =
+      place === 1
+        ? 'h-32'
+        : place === 2
+        ? 'h-24'
+        : place === 3
+        ? 'h-20'
+        : 'h-16'
+
+    return (
+      <div
+        className={`card bg-white/5 border border-white/10 rounded-2xl px-5 py-3 flex items-center gap-4 ${sizeClasses}`}
+      >
+        <div className="text-2xl w-8 text-center">{label}</div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs text-white/50 mb-1">
+            {place} место
+          </div>
+          {rel ? (
+            <>
+              <div className="text-sm font-semibold truncate">
+                {rel.artist}
+              </div>
+              <div className="text-xs text-white/70 truncate">
+                {rel.title}
+              </div>
+            </>
+          ) : (
+            <div className="text-xs text-white/40">
+              {placeholderText || 'Пока неизвестно'}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   // =================== Рендер ===================
 
   return (
@@ -355,7 +490,8 @@ export default function TrackGridPage() {
           <div className="text-sm text-white/70">
             В сетку попадает топ-32 треков (по admin_total). Победители
             продвигаются по раундам верхней сетки, проигравшие разных раундов
-            попадают в нижнюю сетку и там продолжают борьбу.
+            попадают в нижнюю сетку и там продолжают борьбу. Победитель
+            верхней и победитель нижней встречаются в гранд-финале.
           </div>
           {!isAdmin && (
             <div className="text-xs text-white/50">
@@ -366,7 +502,7 @@ export default function TrackGridPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[2fr,1fr] gap-6 items-start">
-          {/* Левая часть: верхняя + нижняя */}
+          {/* Левая часть: верхняя + нижняя + топ-5 */}
           <div className="space-y-8">
             {/* ВЕРХНЯЯ СЕТКА */}
             <div className="space-y-3">
@@ -452,6 +588,61 @@ export default function TrackGridPage() {
                 </div>
               </div>
             )}
+
+            {/* Гранд-финал */}
+            {grandFinal && (
+              <div className="space-y-3">
+                <div className="text-sm text-white/60 font-semibold">
+                  Гранд-финал (верхняя vs нижняя)
+                </div>
+                {renderMatchCard(
+                  grandFinal,
+                  0,
+                  0,
+                  true,
+                  (_r, _m, side, rel) => handlePickGrand(side, rel),
+                )}
+              </div>
+            )}
+
+            {/* Черновой итоговый топ-5 */}
+            <div className="space-y-3">
+              <div className="text-sm text-white/60 font-semibold">
+                Черновой результат — Топ 5 (по текущему состоянию сетки)
+              </div>
+              <div className="space-y-2">
+                {renderPlacementCard(
+                  1,
+                  '🏆',
+                  top1,
+                  '1 место появится, когда в гранд-финале будет выбран победитель.',
+                )}
+                {renderPlacementCard(
+                  2,
+                  '🥈',
+                  top2,
+                  '2 место появится, когда в гранд-финале будет выбран победитель.',
+                )}
+                {renderPlacementCard(
+                  3,
+                  '🥉',
+                  top3,
+                  '3 место появится, когда будет определён финал нижней сетки.',
+                )}
+                {renderPlacementCard(
+                  4,
+                  '4',
+                  top4,
+                  '4 место появится после завершения предпоследнего раунда нижней сетки.',
+                )}
+                {renderPlacementCard(
+                  5,
+                  '5',
+                  top5,
+                  '5 место появится после завершения предпоследнего раунда нижней сетки.',
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Правая панель: инфо о треке */}
@@ -462,8 +653,7 @@ export default function TrackGridPage() {
 
             {!selected && (
               <div className="text-sm text-white/60">
-                Наведи или кликни по треку в верхней или нижней сетке, чтобы
-                увидеть подробности.
+                Наведи или кликни по треку в сетке, чтобы увидеть подробности.
               </div>
             )}
 
@@ -496,8 +686,9 @@ export default function TrackGridPage() {
 
                 {isAdmin ? (
                   <div className="text-[11px] text-emerald-300/80">
-                    Ты админ: кликом по карточке в верхней или нижней сетке
-                    продвигаешь трек в следующий раунд.
+                    Ты админ: кликом по карточке в верхней, нижней сетке
+                    или гранд-финале продвигаешь трек и формируешь итоговый
+                    топ-5.
                   </div>
                 ) : (
                   <div className="text-[11px] text-white/40">
