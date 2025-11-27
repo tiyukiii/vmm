@@ -80,8 +80,25 @@ export default function App() {
             onChange={e => setQuery(e.target.value)}
           />
         </div>
-
-        {loading && <div className="text-white/60">Загрузка…</div>}
+            
+        {/* Блок Премии 2025 */}
+        <div
+          className="card mt-6 p-5 flex items-center justify-between hover:bg-white/10 transition cursor-pointer"
+          onClick={() => navigate('/award2025')}
+        >
+          <div>
+            <div className="text-xl font-semibold text-white">🏆 ПРЕМИЯ 2025</div>
+            <div className="text-sm text-white/60">
+              Лучшие релизы и артисты года
+            </div>
+          </div>
+            
+          <button className="btn-primary">
+            Перейти к премии
+          </button>
+        </div>
+            
+        {loading && <div className="text-white/60">Загрузка...</div>}
 
         {!loading && filtered.map(item => (
           <div key={item.slug} className="card p-5 flex items-center justify-between hover:bg-white/10 transition">
