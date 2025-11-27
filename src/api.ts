@@ -5,11 +5,12 @@ const avg = (arr: number[]) =>
   arr.length ? Math.round((arr.reduce((s, n) => s + n, 0) / arr.length) * 10) / 10 : null;
 
 export type Scores = {
-  r1: number | null; // текст
-  r2: number | null; // атмосфера
-  r3: number | null; // разъеб
-  r4: number | null; // харизма
-  r5: number | null; // целостность
+  r1: number | null; // Текст
+  r2: number | null; // Атмосфера
+  r3: number | null; // Разъеб
+  r4: number | null; // Харизма
+  r5: number | null; // Целостность
+  r6: number | null; // Extra Points
 };
 
 export type Release = {
@@ -139,12 +140,13 @@ export async function fetchReleaseBySlug(slug: string): Promise<Release | null> 
   type Row = {
     total: number | null;
     is_admin: boolean | null;
-    scores: {
-      text?: number;
-      vibe?: number;
-      boom?: number;
-      char?: number;
-      extra?: number;
+    scores?: {
+      text?: number;    // Текст
+      vibe?: number;    // Атмосфера
+      boom?: number;    // Разъеб
+      char?: number;    // Харизма
+      unity?: number;   // Целостность
+      extra?: number;   // Extra Points
     } | null;
   };
 
@@ -167,83 +169,27 @@ export async function fetchReleaseBySlug(slug: string): Promise<Release | null> 
 
   /// /// Разбивка по критериям для пользователей
   const user_breakdown: Scores | null = user.length
-    ? {
-        // r1: Текст
-        r1: avg(
-          user
-            .map((r) => Number(r.scores?.text))
-            .filter((n) => Number.isFinite(n)),
-        ),
-
-        // r2: Атмосфера
-        r2: avg(
-          user
-            .map((r) => Number(r.scores?.vibe))
-            .filter((n) => Number.isFinite(n)),
-        ),
-
-        // r3: Разъёб
-        r3: avg(
-          user
-            .map((r) => Number(r.scores?.boom))
-            .filter((n) => Number.isFinite(n)),
-        ),
-
-        // r4: Харизма
-        r4: avg(
-          user
-            .map((r) => Number(r.scores?.char))
-            .filter((n) => Number.isFinite(n)),
-        ),
-
-        // r5: Целостность
-        r5: avg(
-          user
-            .map((r) => Number(r.scores?.extra))
-            .filter((n) => Number.isFinite(n)),
-        ),
-      }
-    : null;
+  ? {
+      r1: avg(user.map(r => Number(r.scores?.text)).filter(n => Number.isFinite(n))),
+      r2: avg(user.map(r => Number(r.scores?.vibe)).filter(n => Number.isFinite(n))),
+      r3: avg(user.map(r => Number(r.scores?.boom)).filter(n => Number.isFinite(n))),
+      r4: avg(user.map(r => Number(r.scores?.char)).filter(n => Number.isFinite(n))),
+      r5: avg(user.map(r => Number(r.scores?.unity)).filter(n => Number.isFinite(n))),
+      r6: avg(user.map(r => Number(r.scores?.extra)).filter(n => Number.isFinite(n))),
+    }
+  : null;
 
   /// /// Разбивка по критериям для админов
-  const admin_breakdown: Scores | null = admins.length
-    ? {
-        // r1: Текст
-        r1: avg(
-          admins
-            .map((r) => Number(r.scores?.text))
-            .filter((n) => Number.isFinite(n)),
-        ),
-
-        // r2: Атмосфера
-        r2: avg(
-          admins
-            .map((r) => Number(r.scores?.vibe))
-            .filter((n) => Number.isFinite(n)),
-        ),
-
-        // r3: Разъёб
-        r3: avg(
-          admins
-            .map((r) => Number(r.scores?.boom))
-            .filter((n) => Number.isFinite(n)),
-        ),
-
-        // r4: Харизма
-        r4: avg(
-          admins
-            .map((r) => Number(r.scores?.char))
-            .filter((n) => Number.isFinite(n)),
-        ),
-
-        // r5: Целостность
-        r5: avg(
-          admins
-            .map((r) => Number(r.scores?.extra))
-            .filter((n) => Number.isFinite(n)),
-        ),
-      }
-    : null;
+ const admin_breakdown: Scores | null = admins.length
+  ? {
+      r1: avg(admins.map(r => Number(r.scores?.text)).filter(n => Number.isFinite(n))),
+      r2: avg(admins.map(r => Number(r.scores?.vibe)).filter(n => Number.isFinite(n))),
+      r3: avg(admins.map(r => Number(r.scores?.boom)).filter(n => Number.isFinite(n))),
+      r4: avg(admins.map(r => Number(r.scores?.char)).filter(n => Number.isFinite(n))),
+      r5: avg(admins.map(r => Number(r.scores?.unity)).filter(n => Number.isFinite(n))),
+      r6: avg(admins.map(r => Number(r.scores?.extra)).filter(n => Number.isFinite(n))),
+    }
+  : null;
 
   return {
     ...rel,

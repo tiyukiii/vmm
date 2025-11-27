@@ -81,6 +81,12 @@ export default function TrackPage() {
                         <span>{item.admin_breakdown.r5 != null ? item.admin_breakdown.r5.toFixed(1) : '-'}</span>
                       </div>
 
+                      <div className="flex justify-between mb-1">
+                        <span>Extra Points</span>
+                        <span>
+                          {item.admin_breakdown.r6 != null ? item.admin_breakdown.r6.toFixed(1) : '-'}
+                        </span>
+                      </div>                                        
                     </div>
                   )}
                 </div>
@@ -122,6 +128,13 @@ export default function TrackPage() {
                         <span>{item.user_breakdown.r5 != null ? item.user_breakdown.r5.toFixed(1) : '-'}</span>
                       </div>
 
+                      <div className="flex justify-between mb-1">
+                        <span>Extra Points</span>
+                        <span>
+                          {item.admin_breakdown.r6 != null ? item.admin_breakdown.r6.toFixed(1) : '-'}
+                        </span>
+                      </div>
+                                        
                     </div>
                   )}
                 </div>
