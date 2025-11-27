@@ -1,0 +1,1 @@
+{"root":["./src/api.ts","./src/fallback.ts","./src/main.tsx","./src/session.tsx","./src/supabase.ts","./src/hooks/useisadmin.ts","./src/pages/adminpage.tsx","./src/pages/app.tsx","./src/pages/authpage.tsx","./src/pages/onboardingpage.tsx","./src/pages/reviewpage.tsx","./src/pages/top100page.tsx","./src/pages/trackpage.tsx"],"version":"5.9.3"}

@@ -44,18 +44,94 @@ export default function TrackPage() {
                 <img src={item.cover_url || FALLBACK_COVER} alt={item.title} className="w-full h-full object-cover" />
               </div>
               <div className="flex flex-wrap gap-3">
-                <div className="px-4 py-2 rounded-xl bg-white/10 border border-white/10">
-                  Офиц. оценка: {item.admin_total ?? '—'}
-                </div>
+                {/* ОФИЦИАЛЬНАЯ ОЦЕНКА */}
+                <div className="relative group">
+                  <div className="px-4 py-2 rounded-xl bg-white/10 border border-white/10">
+                    Офиц. оценка: {item.admin_total ?? '—'}
+                  </div>
+                      
+                  {item.admin_breakdown && (
+                    <div className="absolute left-0 mt-2 hidden group-hover:block z-20 w-72 rounded-xl bg-slate-900/95 border border-white/20 p-3 text-xs shadow-lg">
+                      <div className="font-semibold mb-2">
+                        Средняя оценка рецензий администрации
+                      </div>
+                  
+                      <div className="flex justify-between mb-1">
+                        <span>Текст</span>
+                        <span>{item.admin_breakdown.r1 != null ? item.admin_breakdown.r1.toFixed(1) : '-'}</span>
+                      </div>
 
-                <div className="px-4 py-2 rounded-xl bg-white/10 border border-white/10">
-                  Пользователи: {item.score != null ? item.score.toFixed(1) : '—'} / 88
-                </div>
+                      <div className="flex justify-between mb-1">
+                        <span>Атмосфера</span>
+                        <span>{item.admin_breakdown.r2 != null ? item.admin_breakdown.r2.toFixed(1) : '-'}</span>
+                      </div>
 
+                      <div className="flex justify-between mb-1">
+                        <span>Разъеб</span>
+                        <span>{item.admin_breakdown.r3 != null ? item.admin_breakdown.r3.toFixed(1) : '-'}</span>
+                      </div>
+
+                      <div className="flex justify-between mb-1">
+                        <span>Харизма</span>
+                        <span>{item.admin_breakdown.r4 != null ? item.admin_breakdown.r4.toFixed(1) : '-'}</span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span>Целостность</span>
+                        <span>{item.admin_breakdown.r5 != null ? item.admin_breakdown.r5.toFixed(1) : '-'}</span>
+                      </div>
+
+                    </div>
+                  )}
+                </div>
+                
+                {/* ПОЛЬЗОВАТЕЛИ */}
+                <div className="relative group">
+                  <div className="px-4 py-2 rounded-xl bg-white/10 border border-white/10">
+                    Пользователи: {item.score ? item.score.toFixed(1) : '—'} / 88
+                  </div>
+                
+                  {item.user_breakdown && (
+                    <div className="absolute left-0 mt-2 hidden group-hover:block z-20 w-72 rounded-xl bg-slate-900/95 border border-white/20 p-3 text-xs shadow-lg">
+                      <div className="font-semibold mb-2">
+                        Средняя оценка рецензий пользователей
+                      </div>
+                  
+                      <div className="flex justify-between mb-1">
+                        <span>Текст</span>
+                        <span>{item.user_breakdown.r1 != null ? item.user_breakdown.r1.toFixed(1) : '-'}</span>
+                      </div>
+
+                      <div className="flex justify-between mb-1">
+                        <span>Атмосфера</span>
+                        <span>{item.user_breakdown.r2 != null ? item.user_breakdown.r2.toFixed(1) : '-'}</span>
+                      </div>
+
+                      <div className="flex justify-between mb-1">
+                        <span>Разъеб</span>
+                        <span>{item.user_breakdown.r3 != null ? item.user_breakdown.r3.toFixed(1) : '-'}</span>
+                      </div>
+
+                      <div className="flex justify-between mb-1">
+                        <span>Харизма</span>
+                        <span>{item.user_breakdown.r4 != null ? item.user_breakdown.r4.toFixed(1) : '-'}</span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span>Целостность</span>
+                        <span>{item.user_breakdown.r5 != null ? item.user_breakdown.r5.toFixed(1) : '-'}</span>
+                      </div>
+
+                    </div>
+                  )}
+                </div>
+                
+                {/* КОЛ-ВО ГОЛОСОВ — БЕЗ ИЗМЕНЕНИЙ */}
                 <div className="px-4 py-2 rounded-xl bg-white/10 border border-white/10">
                   Голосов: {item.votes ?? 0}
                 </div>
               </div>
+                
             </div>
 
             <div className="card p-6">

@@ -1,17 +1,37 @@
 import { supabase } from './supabase';
 
+// хелпер для расчёта среднего (округляет до 0.1)
+const avg = (arr: number[]) =>
+  arr.length ? Math.round((arr.reduce((s, n) => s + n, 0) / arr.length) * 10) / 10 : null;
+
+export type Scores = {
+  r1: number | null; // текст
+  r2: number | null; // атмосфера
+  r3: number | null; // разъеб
+  r4: number | null; // харизма
+  r5: number | null; // целостность
+};
+
 export type Release = {
   id: string;
   slug: string;
   artist: string;
   title: string;
-  type: string; // ← добавлено: нужно для TrackPage и других
+  type: string;
+  created_at: string;
+
   cover_url: string | null;
-  created_at: string | null;
-  score: number | null; // средняя пользовательская
-  votes: number;        // кол-во пользовательских отзывов
-  admin_total: number | null; // средняя официальная (админская)
+
+  // средняя пользовательская (то, что у тебя уже было)
+  score: number | null;
+  votes: number;        // число пользовательских голосов
+  admin_total: number | null; // средняя официальная
+
+  // НОВОЕ: разложение по критериям
+  user_breakdown?: Scores | null;
+  admin_breakdown?: Scores | null;
 };
+
 
 // Получить список всех релизов
 export async function fetchReleases(): Promise<Release[]> {
@@ -88,7 +108,6 @@ export async function fetchReleases(): Promise<Release[]> {
 }
 
 
-// Получить релиз по slug (с агрегацией)
 export async function fetchReleaseBySlug(slug: string): Promise<Release | null> {
   const { data: rel, error: relErr } = await supabase
     .from('releases')
@@ -98,35 +117,74 @@ export async function fetchReleaseBySlug(slug: string): Promise<Release | null> 
 
   if (relErr || !rel) return null;
 
+  // Забираем ВСЕ рецензии по этому релизу
   const { data: reviews, error: revErr } = await supabase
     .from('reviews')
-    .select('total, is_admin')
+    .select('total, is_admin, r1, r2, r3, r4, r5')
     .eq('release_id', rel.id);
 
   if (revErr) {
     console.error('fetchReleaseBySlug error', revErr);
-    return { ...rel, score: null, votes: 0, admin_total: null };
+    return {
+      ...rel,
+      score: null,
+      votes: 0,
+      admin_total: null,
+      user_breakdown: null,
+      admin_breakdown: null,
+    };
   }
 
-  const userTotals = (reviews ?? [])
-    .filter(r => r.is_admin !== true)
+  const all = reviews ?? [];
+
+  const user = all.filter(r => r.is_admin === false);
+  const admins = all.filter(r => r.is_admin === true);
+
+  // итого по баллам
+  const userTotals = user
     .map(r => Number(r.total))
     .filter(n => Number.isFinite(n));
 
-  const adminTotals = (reviews ?? [])
-    .filter(r => r.is_admin === true)
+  const adminTotals = admins
     .map(r => Number(r.total))
     .filter(n => Number.isFinite(n));
 
-  const avg = (arr: number[]) =>
-    arr.length ? Math.round(arr.reduce((s, n) => s + n, 0) / arr.length * 10) / 10 : null;
+  const score = avg(userTotals);          // средняя пользовательская
+  const admin_total = avg(adminTotals);   // средняя админская
+  const votes = userTotals.length;        // кол-во пользовательских голосов
 
-  const score = avg(userTotals);
-  const admin_total = avg(adminTotals);
-  const votes = userTotals.length;
+  // разбивка по критериям для пользователей
+  const user_breakdown: Scores | null = user.length
+    ? {
+        r1: avg(user.map(r => Number(r.r1)).filter(n => Number.isFinite(n))),
+        r2: avg(user.map(r => Number(r.r2)).filter(n => Number.isFinite(n))),
+        r3: avg(user.map(r => Number(r.r3)).filter(n => Number.isFinite(n))),
+        r4: avg(user.map(r => Number(r.r4)).filter(n => Number.isFinite(n))),
+        r5: avg(user.map(r => Number(r.r5)).filter(n => Number.isFinite(n))),
+      }
+    : null;
 
-  return { ...rel, score, votes, admin_total };
+  // разбивка по критериям для админов
+  const admin_breakdown: Scores | null = admins.length
+    ? {
+        r1: avg(admins.map(r => Number(r.r1)).filter(n => Number.isFinite(n))),
+        r2: avg(admins.map(r => Number(r.r2)).filter(n => Number.isFinite(n))),
+        r3: avg(admins.map(r => Number(r.r3)).filter(n => Number.isFinite(n))),
+        r4: avg(admins.map(r => Number(r.r4)).filter(n => Number.isFinite(n))),
+        r5: avg(admins.map(r => Number(r.r5)).filter(n => Number.isFinite(n))),
+      }
+    : null;
+
+  return {
+    ...rel,
+    score,
+    votes,
+    admin_total,
+    user_breakdown,
+    admin_breakdown,
+  };
 }
+
 
 // Добавить релиз (используется в админке)
 export async function addRelease(data: {
