@@ -1,3 +1,5 @@
+// src/pages/TrackGridPage.tsx
+
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchReleases, Release } from '../api'
@@ -21,7 +23,7 @@ export default function TrackGridPage() {
   const [round1, setRound1] = React.useState<Match[]>([])
   const [selected, setSelected] = React.useState<Release | null>(null)
 
-  // Загружаем все релизы и формируем пары
+  // Загружаем все релизы и формируем пары (с авто-проходом при нечётном количестве)
   React.useEffect(() => {
     ;(async () => {
       try {
@@ -29,10 +31,15 @@ export default function TrackGridPage() {
 
         const matches: Match[] = []
         for (let i = 0; i < rows.length; i += 2) {
+          const left = rows[i]
+          const right = rows[i + 1]
+
           matches.push({
             id: i / 2,
-            left: rows[i],
-            right: rows[i + 1],
+            left,
+            right,
+            // если нет соперника справа — автоматический проход левого в следующий раунд
+            winner: right ? undefined : 'left',
           })
         }
 
@@ -61,10 +68,11 @@ export default function TrackGridPage() {
 
   const renderMatchCard = (match: Match, index: number) => {
     const makeCard = (rel: Release | undefined, side: 'left' | 'right') => {
+      // если слота нет вообще
       if (!rel) {
         return (
-          <div className="card p-4 bg-white/5 border border-white/5 rounded-xl opacity-40">
-            <div className="text-sm text-white/40">Пустой слот</div>
+          <div className="card px-3 py-2 bg-white/5 border border-white/5 rounded-xl opacity-40 text-xs text-white/40">
+            Нет соперника
           </div>
         )
       }
@@ -77,12 +85,12 @@ export default function TrackGridPage() {
           onClick={() => clickable && handlePickWinner(index, side, rel)}
           onMouseEnter={() => setSelected(rel)}
           className={[
-            'card p-4 flex items-center gap-4 transition',
+            'card px-3 py-2 flex items-center gap-3 rounded-xl text-sm transition',
             clickable ? 'cursor-pointer hover:bg-white/10' : 'cursor-default',
             isWinner ? 'ring-2 ring-emerald-400 bg-white/10' : 'bg-white/5 border border-white/5',
           ].join(' ')}
         >
-          <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/10 shrink-0">
+          <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/10 shrink-0">
             <img
               src={rel.cover_url || FALLBACK_COVER}
               alt={rel.title}
@@ -90,11 +98,11 @@ export default function TrackGridPage() {
             />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold truncate">{rel.artist}</div>
-            <div className="text-xs text-white/70 truncate">{rel.title}</div>
+            <div className="text-xs font-semibold truncate">{rel.artist}</div>
+            <div className="text-[11px] text-white/70 truncate">{rel.title}</div>
           </div>
           {clickable && (
-            <div className="text-[10px] text-white/40 uppercase tracking-wide">
+            <div className="text-[9px] text-white/40 uppercase tracking-wide">
               клик — продвинуть
             </div>
           )}
@@ -110,11 +118,23 @@ export default function TrackGridPage() {
     )
   }
 
+  // Победители первого раунда → Раунд 2
   const winners = React.useMemo(() => {
     const list: Release[] = []
     round1.forEach(m => {
       if (m.winner === 'left' && m.left) list.push(m.left)
       if (m.winner === 'right' && m.right) list.push(m.right)
+    })
+    return list
+  }, [round1])
+
+  // Проигравшие первого раунда → нижняя сетка (заготовка)
+  const losers = React.useMemo(() => {
+    const list: Release[] = []
+    round1.forEach(m => {
+      if (m.winner === 'left' && m.right) list.push(m.right)
+      if (m.winner === 'right' && m.left) list.push(m.left)
+      // если нет соперника — проигравшего нет
     })
     return list
   }, [round1])
@@ -129,9 +149,7 @@ export default function TrackGridPage() {
             <button className="btn-primary" onClick={() => navigate('/top100')}>
               Топ 100
             </button>
-            {user?.email && (
-              <span className="text-white/60 text-sm">{user.email}</span>
-            )}
+            {user?.email && <span className="text-white/60 text-sm">{user.email}</span>}
           </div>
         </div>
 
@@ -159,7 +177,7 @@ export default function TrackGridPage() {
 
         {/* Сетка + панель справа */}
         <div className="grid grid-cols-1 md:grid-cols-[2fr,1fr] gap-6 items-start">
-          {/* Левая часть — сетка */}
+          {/* Левая часть — верхняя сетка */}
           <div className="space-y-4">
             <div className="text-sm text-white/60 flex items-center gap-3">
               <span className="font-semibold text-white">Верхняя сетка</span>
@@ -173,13 +191,13 @@ export default function TrackGridPage() {
             {!loading && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
                 {/* Раунд 1 */}
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {round1.map((match, index) => renderMatchCard(match, index))}
                 </div>
 
-                {/* Победители (условный Раунд 2) */}
-                <div className="space-y-4">
-                  <div className="text-sm text-white/60 mb-1">Победители пар</div>
+                {/* Раунд 2 — победители пар */}
+                <div className="space-y-3">
+                  <div className="text-sm text-white/60 mb-1">Раунд 2</div>
                   {winners.length === 0 && (
                     <div className="text-sm text-white/40">
                       Пока никто не продвинут. Кликни по трекам (как админ), чтобы выбрать
@@ -190,9 +208,9 @@ export default function TrackGridPage() {
                     <div
                       key={rel.id ?? idx}
                       onMouseEnter={() => setSelected(rel)}
-                      className="card p-4 flex items-center gap-4 bg-white/10 border border-emerald-400/70 rounded-xl"
+                      className="card px-3 py-2 flex items-center gap-3 bg-white/10 border border-emerald-400/70 rounded-xl text-sm"
                     >
-                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/10 shrink-0">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/10 shrink-0">
                         <img
                           src={rel.cover_url || FALLBACK_COVER}
                           alt={rel.title}
@@ -200,15 +218,63 @@ export default function TrackGridPage() {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold truncate">{rel.artist}</div>
-                        <div className="text-xs text-white/70 truncate">{rel.title}</div>
+                        <div className="text-xs font-semibold truncate">{rel.artist}</div>
+                        <div className="text-[11px] text-white/70 truncate">{rel.title}</div>
                       </div>
-                      <div className="text-[10px] text-emerald-300 uppercase tracking-wide">
+                      <div className="text-[9px] text-emerald-300 uppercase tracking-wide">
                         продвинут
                       </div>
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Нижняя сетка (проигравшие) – заготовка */}
+            {!loading && (
+              <div className="mt-6 space-y-3">
+                <div className="text-sm text-white/60 flex items-center gap-3">
+                  <span className="font-semibold text-white">Нижняя сетка</span>
+                  <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
+                    Проигравшие Раунда 1
+                  </span>
+                </div>
+
+                {losers.length === 0 && (
+                  <div className="text-sm text-white/40">
+                    В нижней сетке пока никого нет. Она заполнится, когда будут выбраны
+                    победители в верхней сетке.
+                  </div>
+                )}
+
+                {losers.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {losers.map((rel, idx) => (
+                      <div
+                        key={rel.id ?? idx}
+                        className="card px-3 py-2 flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl text-sm"
+                        onMouseEnter={() => setSelected(rel)}
+                      >
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/10 shrink-0">
+                          <img
+                            src={rel.cover_url || FALLBACK_COVER}
+                            alt={rel.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold truncate">{rel.artist}</div>
+                          <div className="text-[11px] text-white/70 truncate">
+                            {rel.title}
+                          </div>
+                        </div>
+                        <div className="text-[9px] text-white/40 uppercase tracking-wide">
+                          нижняя сетка
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -248,7 +314,8 @@ export default function TrackGridPage() {
 
                 {isAdmin ? (
                   <div className="text-[11px] text-emerald-300/80">
-                    Ты админ: кликом по карточке в сетке продвигаешь трек в следующий раунд.
+                    Ты админ: кликом по карточке в верхней сетке продвигаешь трек в следующий
+                    раунд.
                   </div>
                 ) : (
                   <div className="text-[11px] text-white/40">

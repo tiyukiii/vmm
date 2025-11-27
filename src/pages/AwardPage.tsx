@@ -5,15 +5,26 @@ import { useNavigate } from 'react-router-dom'
 import { useSession, signOut } from '../session'
 import { useIsAdmin } from '../hooks/useIsAdmin'
 
+type NominationKey = 'track' | 'album' | 'artist' | 'breakthrough'
+
 export default function AwardPage() {
   const navigate = useNavigate()
   const { user } = useSession()
   const isAdmin = useIsAdmin()
 
+  const [activeNomination, setActiveNomination] = React.useState<NominationKey>('track')
+
+  const tabs: { key: NominationKey; label: string }[] = [
+    { key: 'track',        label: 'Трек года' },
+    { key: 'album',        label: 'Альбом года' },
+    { key: 'artist',       label: 'Артист года' },
+    { key: 'breakthrough', label: 'Прорыв года' },
+  ]
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-950 to-black text-white p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        {/* Шапка как на главной */}
+        {/* Шапка */}
         <div className="flex items-center justify-between">
           <div className="text-2xl font-extrabold">Музыкальные Оценки</div>
 
@@ -57,7 +68,7 @@ export default function AwardPage() {
           ← Вернуться на главную
         </button>
 
-        {/* Hero-блок премии */}
+        {/* Hero */}
         <div className="card p-6 flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl">
           <div className="flex items-start gap-4">
             <div className="text-4xl">🏆</div>
@@ -75,116 +86,129 @@ export default function AwardPage() {
           </div>
         </div>
 
-        {/* Табы номинаций (пока только визуально, без логики) */}
+        {/* Табы номинаций */}
         <div className="flex flex-wrap gap-3 text-sm">
-          <button className="px-4 py-2 rounded-full bg-white/10 border border-white/30">
-            Трек года
-          </button>
-          <button className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/60">
-            Альбом года
-          </button>
-          <button className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/60">
-            Артист года
-          </button>
-          <button className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/60">
-            Прорыв года
-          </button>
+          {tabs.map(tab => {
+            const active = tab.key === activeNomination
+            return (
+              <button
+                key={tab.key}
+                className={
+                  'px-4 py-2 rounded-full border transition ' +
+                  (active
+                    ? 'bg-white/10 border-white/30 text-white'
+                    : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10')
+                }
+                onClick={() => setActiveNomination(tab.key)}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
         </div>
 
-        {/* Номинанты — Трек года */}
+        {/* Номинанты */}
         <div className="space-y-4">
-          <div className="text-xl font-semibold">Номинанты — Трек года</div>
+          <div className="text-xl font-semibold">
+            Номинанты — {tabs.find(t => t.key === activeNomination)?.label}
+          </div>
           <div className="text-sm text-white/60">
             Все треки, добавленные на сайт в 2025 году. Полная турнирная сетка доступна только
             администраторам.
           </div>
 
-          {/* Карточка результатов номинации Трек года */}
-          <div className="card bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
-            {/* 1 место */}
-            <div className="flex gap-6 items-start">
-              {/* Большой квадрат 1 места */}
-              <div className="w-40 h-40 md:w-52 md:h-52 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-6xl text-white/25">
-                ?
-              </div>
-                    
-              {/* Текст справа */}
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center gap-2 text-2xl font-bold">
-                  <span>🏆</span>
-                  <span>Пока неизвестно</span>
+          {/* Для разных номинаций — разный контент */}
+          {activeNomination === 'track' ? (
+            <div className="card bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
+              {/* 1 место */}
+              <div className="flex gap-6 items-start">
+                {/* Большой квадрат 1 места */}
+                <div className="w-40 h-40 md:w-52 md:h-52 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-6xl text-white/25">
+                  ?
                 </div>
-                    
-                <div className="text-sm text-white/70">
-                  Трек года — по версии премии 2025
-                </div>
-                    
-                <div className="text-sm text-white/50">
-                  1 место появится здесь, когда админы выберут победителя в турнирной сетке.
-                </div>
-              </div>
-            </div>
-                    
-            {/* 2 место */}
-            <div className="flex items-center gap-4 mt-6">
-              <div className="w-28 h-28 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-4xl text-white/25">
-                ?
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-lg font-semibold">
-                  <span>🥈</span>
-                  <span>Пока неизвестно</span>
-                </div>
-                <div className="text-sm text-white/60">2 место</div>
-              </div>
-            </div>
-                    
-            {/* 3 место */}
-            <div className="flex items-center gap-4 mt-4">
-              <div className="w-24 h-24 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl text-white/25">
-                ?
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-base font-semibold">
-                  <span>🥉</span>
-                  <span>Пока неизвестно</span>
-                </div>
-                <div className="text-sm text-white/60">3 место</div>
-              </div>
-            </div>
-                    
-            {/* 4–5 места */}
-            <div className="space-y-1 text-sm mt-4">
-              <div>
-                <span className="font-semibold">4 место</span> —{' '}
-                <span className="text-white/70">Пока неизвестно</span>
-              </div>
-              <div>
-                <span className="font-semibold">5 место</span> —{' '}
-                <span className="text-white/70">Пока неизвестно</span>
-              </div>
-            </div>
-                    
-            {/* Кнопка голосования */}
-            {isAdmin && (
-              <button
-                className="btn-primary w-full mt-6"
-                onClick={() => navigate('/award2025/track-grid')}
-              >
-                Голосовать
-              </button>
-            )}
 
-            {/* Кнопка голосования — только для админа */}
-            {isAdmin && (
-              <button
-                className="btn-primary w-full mt-4"
-                onClick={() => navigate('/award2025/track-grid')}
-              >
-                Голосовать
-              </button>
-            )}
-          </div>
+                {/* Текст справа */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2 text-2xl font-bold">
+                    <span>🏆</span>
+                    <span>Пока неизвестно</span>
+                  </div>
+                  <div className="text-sm text-white/70">
+                    Трек года — по версии премии 2025
+                  </div>
+                  <div className="text-sm text-white/50">
+                    1 место появится здесь, когда админы выберут победителя в турнирной сетке.
+                  </div>
+                </div>
+              </div>
+
+              {/* 2 место */}
+              <div className="flex items-center gap-4 mt-6">
+                <div className="w-28 h-28 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-4xl text-white/25">
+                  ?
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 text-lg font-semibold">
+                    <span>🥈</span>
+                    <span>Пока неизвестно</span>
+                  </div>
+                  <div className="text-sm text-white/60">2 место</div>
+                </div>
+              </div>
+
+              {/* 3 место */}
+              <div className="flex items-center gap-4 mt-4">
+                <div className="w-24 h-24 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl text-white/25">
+                  ?
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 text-base font-semibold">
+                    <span>🥉</span>
+                    <span>Пока неизвестно</span>
+                  </div>
+                  <div className="text-sm text-white/60">3 место</div>
+                </div>
+              </div>
+
+              {/* 4–5 места */}
+              <div className="space-y-1 text-sm mt-4">
+                <div>
+                  <span className="font-semibold">4 место</span> —{' '}
+                  <span className="text-white/70">Пока неизвестно</span>
+                </div>
+                <div>
+                  <span className="font-semibold">5 место</span> —{' '}
+                  <span className="text-white/70">Пока неизвестно</span>
+                </div>
+              </div>
+
+              {/* Одна кнопка голосования */}
+              {isAdmin && (
+                <button
+                  className="btn-primary w-full mt-6"
+                  onClick={() => navigate('/award2025/track-grid')}
+                >
+                  Голосовать
+                </button>
+              )}
+            </div>
+          ) : (
+            // Заглушка для остальных номинаций (пока без сеток)
+            <div className="card bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+              <div className="text-lg font-semibold">
+                {tabs.find(t => t.key === activeNomination)?.label}
+              </div>
+              <div className="text-sm text-white/70">
+                Эту номинацию ещё не настроили. Позже здесь появится такой же блок с 1–5 местами и
+                отдельной турнирной сеткой.
+              </div>
+              {isAdmin && (
+                <div className="text-xs text-white/40">
+                  Как админ ты потом сможешь запускать сетку и голосование и для этой номинации.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
