@@ -109,6 +109,7 @@ export async function fetchReleases(): Promise<Release[]> {
 
 
 export async function fetchReleaseBySlug(slug: string): Promise<Release | null> {
+  // 1) забираем сам релиз
   const { data: rel, error: relErr } = await supabase
     .from('releases')
     .select('id, slug, artist, title, type, cover_url, created_at')
@@ -117,10 +118,10 @@ export async function fetchReleaseBySlug(slug: string): Promise<Release | null> 
 
   if (relErr || !rel) return null;
 
-  // Забираем ВСЕ рецензии по этому релизу
+  // 2) забираем все рецензии по этому релизу
   const { data: reviews, error: revErr } = await supabase
     .from('reviews')
-    .select('total, is_admin, r1, r2, r3, r4, r5')
+    .select('total, is_admin, scores')        // <-- только total, is_admin и jsonb scores
     .eq('release_id', rel.id);
 
   if (revErr) {
@@ -135,43 +136,99 @@ export async function fetchReleaseBySlug(slug: string): Promise<Release | null> 
     };
   }
 
-  const all = reviews ?? [];
+  type Row = {
+    total: number | null;
+    is_admin: boolean | null;
+    scores: {
+      text?: number;
+      vibe?: number;
+      boom?: number;
+      char?: number;
+      extra?: number;
+    } | null;
+  };
+
+  const all: Row[] = (reviews ?? []) as Row[];
 
   const user = all.filter(r => r.is_admin === false);
   const admins = all.filter(r => r.is_admin === true);
 
-  // итого по баллам
+  // /// Итого по баллам (общие оценки)
   const userTotals = user
     .map(r => Number(r.total))
     .filter(n => Number.isFinite(n));
-
   const adminTotals = admins
     .map(r => Number(r.total))
     .filter(n => Number.isFinite(n));
 
   const score = avg(userTotals);          // средняя пользовательская
   const admin_total = avg(adminTotals);   // средняя админская
-  const votes = userTotals.length;        // кол-во пользовательских голосов
+  const votes = userTotals.length;        // количество пользовательских голосов
 
-  // разбивка по критериям для пользователей
+  // /// Разбивка по критериям для пользователей
   const user_breakdown: Scores | null = user.length
     ? {
-        r1: avg(user.map(r => Number(r.r1)).filter(n => Number.isFinite(n))),
-        r2: avg(user.map(r => Number(r.r2)).filter(n => Number.isFinite(n))),
-        r3: avg(user.map(r => Number(r.r3)).filter(n => Number.isFinite(n))),
-        r4: avg(user.map(r => Number(r.r4)).filter(n => Number.isFinite(n))),
-        r5: avg(user.map(r => Number(r.r5)).filter(n => Number.isFinite(n))),
+        // r1: Текст
+        r1: avg(
+          user
+            .map(r => Number(r.scores?.text))
+            .filter(n => Number.isFinite(n)),
+        ),
+        // r2: Атмосфера
+        r2: avg(
+          user
+            .map(r => Number(r.scores?.vibe))
+            .filter(n => Number.isFinite(n)),
+        ),
+        // r3: Разъеб
+        r3: avg(
+          user
+            .map(r => Number(r.scores?.boom))
+            .filter(n => Number.isFinite(n)),
+        ),
+        // r4: Харизма
+        r4: avg(
+          user
+            .map(r => Number(r.scores?.char))
+            .filter(n => Number.isFinite(n)),
+        ),
+        // r5: Целостность (extra)
+        r5: avg(
+          user
+            .map(r => Number(r.scores?.extra))
+            .filter(n => Number.isFinite(n)),
+        ),
       }
     : null;
 
-  // разбивка по критериям для админов
+  // /// Разбивка по критериям для админов
   const admin_breakdown: Scores | null = admins.length
     ? {
-        r1: avg(admins.map(r => Number(r.r1)).filter(n => Number.isFinite(n))),
-        r2: avg(admins.map(r => Number(r.r2)).filter(n => Number.isFinite(n))),
-        r3: avg(admins.map(r => Number(r.r3)).filter(n => Number.isFinite(n))),
-        r4: avg(admins.map(r => Number(r.r4)).filter(n => Number.isFinite(n))),
-        r5: avg(admins.map(r => Number(r.r5)).filter(n => Number.isFinite(n))),
+        r1: avg(
+          admins
+            .map(r => Number(r.scores?.text))
+            .filter(n => Number.isFinite(n)),
+        ),
+        r2: avg(
+          admins
+            .map(r => Number(r.scores?.vibe))
+            .filter(n => Number.isFinite(n)),
+        ),
+        r3: avg(
+          admins
+            .map(r => Number(r.scores?.boom))
+            .filter(n => Number.isFinite(n)),
+        ),
+        r4: avg(
+          admins
+            .map(r => Number(r.scores?.char))
+            .filter(n => Number.isFinite(n)),
+        ),
+        r5: avg(
+          admins
+            .map(r => Number(r.scores?.extra))
+            .filter(n => Number.isFinite(n)),
+        ),
       }
     : null;
 
@@ -184,6 +241,7 @@ export async function fetchReleaseBySlug(slug: string): Promise<Release | null> 
     admin_breakdown,
   };
 }
+
 
 
 // Добавить релиз (используется в админке)
