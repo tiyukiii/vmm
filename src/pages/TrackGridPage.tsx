@@ -27,19 +27,22 @@ export default function TrackGridPage() {
 
   const [selected, setSelected] = React.useState<Release | null>(null)
 
-  // ========= Инициализация верхней сетки (ТОП-32 по admin_total) =========
+  // ========= Инициализация верхней сетки (ТОП-32 ТРЕКОВ по admin_total) =========
   React.useEffect(() => {
     ;(async () => {
       try {
         const rows = await fetchReleases()
 
-        // Сортируем по admin_total по убыванию
-        const sorted = [...rows].sort(
+        // Берём только треки (чтобы не залетали альбомы и др. типы)
+        const onlyTracks = rows.filter(r => r.type === 'трек')
+
+        // Сортируем по admin_total по убыванию — как на топ-100
+        const sorted = [...onlyTracks].sort(
           (a, b) =>
             ((b as any).admin_total ?? 0) - ((a as any).admin_total ?? 0),
         )
 
-        // Берём только топ-32
+        // Берём только топ-32 трека
         const top32 = sorted.slice(0, 32)
 
         const matches: Match[] = []
@@ -227,8 +230,9 @@ export default function TrackGridPage() {
         <div className="card bg-white/5 border border-white/10 rounded-2xl p-6 space-y-2">
           <div className="text-xl font-semibold">Трек года — турнирная сетка</div>
           <div className="text-sm text-white/70">
-            В сетку попадает топ-32 треков по admin_total в 2025 году. Админы кликают по трекам,
-            чтобы продвигать их дальше по сетке. Обычные пользователи могут только смотреть.
+            В сетку попадает топ-32 треков (по admin_total) из всех релизов 2025 года. Админы
+            кликают по трекам, чтобы продвигать их дальше по сетке. Обычные пользователи могут
+            только смотреть.
           </div>
           {!isAdmin && (
             <div className="text-xs text-white/50">
