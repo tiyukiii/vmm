@@ -44,6 +44,16 @@ export default function App() {
                 Админ
               </button>
             )}
+
+            <a
+              href="https://t.me/+-MI5CrXm3L1jZDhi"   // <-- ссылка на свой TG-канал
+              target="_blank"
+              rel="noreferrer"
+              className="btn-primary"
+            >
+              Записи Стримов
+            </a>
+
             
             <button className="btn-primary" onClick={() => navigate('/top100')}>
               Топ 100
